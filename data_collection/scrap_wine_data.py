@@ -33,15 +33,15 @@ if __name__ == '__main__':
 
     # Defines the payload, i.e., filters to be used on the search
     payload = {
-        "country_codes[]": "br",
+        # "country_codes[]": "br",
         # "food_ids[]": 20,
         # "grape_ids[]": 3,
         # "grape_filter": "varietal",
-        "min_rating": 3.7,
+        # "min_rating": 3.7,
         # "order_by": "ratings_average",
         # "order": "desc",
-        # "price_range_min": 25,
-        # "price_range_max": 100,
+        "price_range_min": 10,
+        "price_range_max": 21,
         # "region_ids[]": 383,
         # "wine_style_ids[]": 98,
         # "wine_type_ids[]": 1,
@@ -58,6 +58,8 @@ if __name__ == '__main__':
 
     print(f'Number of matches: {n_matches}')
 
+    # data = {"wines": []}
+
     # Iterates through the amount of possible pages
     for i in range(start_page, max(1, int(n_matches / c.RECORDS_PER_PAGE)) + 1):
         # Creates a dictionary to hold the data
@@ -72,37 +74,34 @@ if __name__ == '__main__':
         # Performs the request and scraps the URLs
         res = r.get('explore/explore', params=payload)
         matches = res.json()['explore_vintage']['matches']
+        # print(matches)
 
         # Iterates over every match
         for match in matches:
             # Gathers the wine-based data
             wine = match['vintage']['wine']
-
+            price = match['price']
+            wine['price'] = price
             # Popping redundant values
-            if wine['style']:
-                wine['style'].pop('country', None)
-                wine['style'].pop('region', None)
-                wine['style'].pop('grapes', None)
+            # if wine['style']:
+            #     wine['style'].pop('country', None)
+            #     wine['style'].pop('region', None)
+            #     wine['style'].pop('grapes', None)
 
             print(f'Scraping data from wine: {wine["name"]}')
 
             # Appends current match to the dictionary
-            data['wines'].append(wine)
+            data['wines'].append({
+                'name': wine['name'],
+                'price': wine['price'],
+                'taste': r.get(f'wines/{wine["id"]}/tastes').json()['tastes'],
+                'reviews': r.get(f'wines/{wine["id"]}/reviews').json()['reviews']
+            })
 
-            # Gathers the full-taste profile from current match
-            res = r.get(f'wines/{wine["id"]}/tastes')
-            tastes = res.json()
-            data['wines'][-1]['taste'] = tastes['tastes']
-
-            # Gathers the reviews from current match
-            res = r.get(f'wines/{wine["id"]}/reviews')
-            reviews = res.json()
-            data['wines'][-1]['reviews'] = reviews['reviews']
-
-            # Opens the output .json file
-            with open(f'{i}_{output_file}', 'w') as f:
-                # Dumps the data
-                json.dump(data, f)
+        # Opens the output .json file
+        with open(f'{output_file}_{i}', 'w') as f:
+            # Dumps the data
+            json.dump(data, f)
         
         # Closes the file
         f.close()
